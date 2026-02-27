@@ -1,6 +1,4 @@
-import dynamic from 'next/dynamic'
-
-const ChatUI = dynamic(() => import('@/components/ChatUI'), { ssr: false })
+import ChatWrapper from '@/components/ChatWrapper'
 
 export default function Home() {
   return (
@@ -26,7 +24,7 @@ export default function Home() {
 
       {/* Chat */}
       <div className="flex-1 overflow-hidden max-w-4xl mx-auto w-full">
-        <ChatUI />
+        <ChatWrapper />
       </div>
     </main>
   )

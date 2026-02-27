@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.36",
+    "@ai-sdk/react": "^3.0.105",
     "@crayonai/react-core": "^0.7.7",
     "@crayonai/react-ui": "^0.9.16",
     "@crayonai/stream": "^0.6.4",

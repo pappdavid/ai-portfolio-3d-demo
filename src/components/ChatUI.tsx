@@ -1,6 +1,6 @@
 'use client'
 
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
 import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, AlertCircle } from 'lucide-react'
 import dynamic from 'next/dynamic'
