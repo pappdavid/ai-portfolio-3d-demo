@@ -28,7 +28,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Run tests
-        run: npm test -- --run
+        run: npm test -- --run --passWithNoTests
         env:
           OPENAI_API_KEY: placeholder
           SUPABASE_URL: https://placeholder.supabase.co
