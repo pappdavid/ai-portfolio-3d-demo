@@ -35,21 +35,32 @@ function stripJsonBlock(text: string): string {
 }
 
 export default function ChatUI() {
+  const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, append, status } = useChat({
     api: '/api/rag-chat',
     onError: (e) => setError(e.message || 'Something went wrong'),
-    onResponse: () => setError(null),
+    onFinish: () => setError(null),
   })
+
+  const isLoading = status === 'streaming' || status === 'submitted'
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSuggestedPrompt = (prompt: string) => {
-    handleInputChange({ target: { value: prompt } } as React.ChangeEvent<HTMLInputElement>)
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return
+    setInputValue('')
+    setError(null)
+    await append({ role: 'user', content: text })
+  }
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    sendMessage(inputValue)
   }
 
   return (
@@ -77,7 +88,7 @@ export default function ChatUI() {
               {SUGGESTED_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
-                  onClick={() => handleSuggestedPrompt(prompt)}
+                  onClick={() => sendMessage(prompt)}
                   className="px-3 py-1.5 text-xs rounded-full border border-slate-600 bg-slate-800/50 text-slate-300 hover:border-indigo-500 hover:text-indigo-300 hover:bg-indigo-950/30 transition-colors"
                 >
                   {prompt}
@@ -88,15 +99,16 @@ export default function ChatUI() {
         )}
 
         {messages.map((msg) => {
-          const sceneConfig = msg.role === 'assistant' ? parseSceneConfig(msg.content) : null
-          const displayText = msg.role === 'assistant' ? stripJsonBlock(msg.content) : msg.content
+          const content = typeof msg.content === 'string' ? msg.content : ''
+          const sceneConfig = msg.role === 'assistant' ? parseSceneConfig(content) : null
+          const displayText = msg.role === 'assistant' ? stripJsonBlock(content) : content
 
           return (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] ${msg.role === 'user' ? 'w-auto' : 'w-full'}`}>
                 {msg.role === 'user' ? (
                   <div className="rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm text-white">
-                    {msg.content}
+                    {content}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -126,17 +138,17 @@ export default function ChatUI() {
 
       {/* Input */}
       <div className="border-t border-slate-700/50 bg-slate-900/50 px-4 py-3">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleFormSubmit} className="flex gap-2">
           <input
-            value={input}
-            onChange={handleInputChange}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask about projects or request a 3D visualization..."
             className="flex-1 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
             disabled={isLoading}
           />
           <button
             type="submit"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !inputValue.trim()}
             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
