@@ -44,19 +44,13 @@ function getMessageText(parts: UIMessage['parts']): string {
 
 export default function ChatUI() {
   const [inputValue, setInputValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage, status, error: chatError } = useChat({
     transport: new DefaultChatTransport({ api: '/api/rag-chat' }),
-    onError: (e) => setError(e.message || 'Something went wrong'),
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
-
-  useEffect(() => {
-    if (chatError) setError(chatError.message || 'Something went wrong')
-  }, [chatError])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -65,7 +59,6 @@ export default function ChatUI() {
   const send = async (text: string) => {
     if (!text.trim() || isLoading) return
     setInputValue('')
-    setError(null)
     await sendMessage({ text })
   }
 
@@ -134,10 +127,10 @@ export default function ChatUI() {
           </div>
         )}
 
-        {error && (
+        {chatError && (
           <div className="flex items-center gap-2 text-red-400 text-sm px-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+            <span>{chatError.message || 'Something went wrong'}</span>
           </div>
         )}
 

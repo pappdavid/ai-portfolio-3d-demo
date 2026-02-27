@@ -115,17 +115,16 @@ function NeuralScene({ data }: { data: DataPoint[] }) {
     if (groupRef.current) groupRef.current.rotation.y += delta * rotationSpeed
   })
 
-  const layers = [1, 3, data.length, 2, 1]
-  const layerX = [-3, -1.5, 0, 1.5, 3]
-
   const nodes = useMemo(() => {
+    const layers = [1, 3, data.length, 2, 1]
+    const layerX = [-3, -1.5, 0, 1.5, 3]
     return layers.map((count, li) => {
       return Array.from({ length: count }, (_, ni) => {
         const y = (ni - (count - 1) / 2) * 1.2
         return { position: [layerX[li], y, 0] as [number, number, number], li, ni }
       })
     })
-  }, [])
+  }, [data.length])
 
   const edges = useMemo(() => {
     const lines: { start: [number, number, number]; end: [number, number, number] }[] = []
