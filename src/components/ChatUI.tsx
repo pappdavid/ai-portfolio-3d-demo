@@ -1,6 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, AlertCircle } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -34,62 +35,61 @@ function stripJsonBlock(text: string): string {
   return text.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '').trim()
 }
 
+function getMessageText(parts: UIMessage['parts']): string {
+  return parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map((p) => p.text)
+    .join('')
+}
+
 export default function ChatUI() {
   const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, append, status } = useChat({
-    api: '/api/rag-chat',
+  const { messages, sendMessage, status, error: chatError } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/rag-chat' }),
     onError: (e) => setError(e.message || 'Something went wrong'),
-    onFinish: () => setError(null),
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
   useEffect(() => {
+    if (chatError) setError(chatError.message || 'Something went wrong')
+  }, [chatError])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = async (text: string) => {
+  const send = async (text: string) => {
     if (!text.trim() || isLoading) return
     setInputValue('')
     setError(null)
-    await append({ role: 'user', content: text })
+    await sendMessage({ text })
   }
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    sendMessage(inputValue)
+    send(inputValue)
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Error toast */}
-      {error && (
-        <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
-          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">×</button>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-6 py-12">
+          <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-white mb-2">AI Portfolio Assistant</h2>
-              <p className="text-slate-400 text-sm max-w-md">
-                Ask about projects, request 3D visualizations of metrics, or explore the AI portfolio.
-              </p>
+              <p className="text-slate-400">Ask about projects or request 3D visualizations</p>
             </div>
             <div className="flex flex-wrap gap-2 justify-center max-w-lg">
               {SUGGESTED_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
-                  onClick={() => sendMessage(prompt)}
-                  className="px-3 py-1.5 text-xs rounded-full border border-slate-600 bg-slate-800/50 text-slate-300 hover:border-indigo-500 hover:text-indigo-300 hover:bg-indigo-950/30 transition-colors"
+                  onClick={() => send(prompt)}
+                  className="px-3 py-1.5 rounded-full bg-indigo-900/50 border border-indigo-700/50 text-indigo-300 text-sm hover:bg-indigo-800/50 transition-colors"
                 >
                   {prompt}
                 </button>
@@ -99,25 +99,26 @@ export default function ChatUI() {
         )}
 
         {messages.map((msg) => {
-          const content = typeof msg.content === 'string' ? msg.content : ''
-          const sceneConfig = msg.role === 'assistant' ? parseSceneConfig(content) : null
-          const displayText = msg.role === 'assistant' ? stripJsonBlock(content) : content
+          const text = getMessageText(msg.parts)
+          const isUser = msg.role === 'user'
+          const sceneConfig = !isUser ? parseSceneConfig(text) : null
+          const displayText = !isUser ? stripJsonBlock(text) : text
 
           return (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] ${msg.role === 'user' ? 'w-auto' : 'w-full'}`}>
-                {msg.role === 'user' ? (
-                  <div className="rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm text-white">
-                    {content}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {displayText && (
-                      <div className="rounded-2xl rounded-tl-sm bg-slate-800/80 border border-slate-700/50 px-4 py-3 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                        {displayText}
-                      </div>
-                    )}
-                    {sceneConfig && <ThreeScene config={sceneConfig} />}
+            <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                  isUser
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-800/80 border border-slate-700/50 text-slate-100'
+                }`}
+              >
+                {displayText && (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{displayText}</p>
+                )}
+                {sceneConfig && (
+                  <div className="mt-3 rounded-xl overflow-hidden border border-slate-700/50 h-80">
+                    <ThreeScene config={sceneConfig} />
                   </div>
                 )}
               </div>
@@ -127,34 +128,43 @@ export default function ChatUI() {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-tl-sm bg-slate-800/80 border border-slate-700/50 px-4 py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+            <div className="bg-slate-800/80 border border-slate-700/50 rounded-2xl px-4 py-3">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-2 text-red-400 text-sm px-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-slate-700/50 bg-slate-900/50 px-4 py-3">
-        <form onSubmit={handleFormSubmit} className="flex gap-2">
-          <input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about projects or request a 3D visualization..."
-            className="flex-1 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !inputValue.trim()}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </button>
-        </form>
-      </div>
+      {/* Input bar */}
+      <form
+        onSubmit={handleFormSubmit}
+        className="p-4 border-t border-slate-800/50 flex gap-2"
+      >
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Ask about my AI projects or request a 3D visualization..."
+          disabled={isLoading}
+          className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={!inputValue.trim() || isLoading}
+          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2.5 transition-colors"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </form>
     </div>
   )
 }

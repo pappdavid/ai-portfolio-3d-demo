@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai'
-import { streamText } from 'ai'
+import { streamText, convertToModelMessages, isTextUIPart, type UIMessage } from 'ai'
 import OpenAI from 'openai'
 import { matchDocuments } from '@/lib/supabase'
 
@@ -21,16 +21,21 @@ Types available:
 Only include the JSON block when visualization is explicitly requested. Keep your text response concise and informative. If no context is available, answer from general AI/ML knowledge.`
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  const body = await req.json()
+  const messages: UIMessage[] = body.messages ?? []
 
-  const lastUserMessage = messages.findLast((m: { role: string }) => m.role === 'user')?.content || ''
+  // Extract last user message text from parts
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+  const lastUserText = lastUser
+    ? lastUser.parts.filter(isTextUIPart).map((p) => p.text).join('')
+    : ''
 
   // Get embedding for the user's query
   let context = ''
   try {
     const embeddingRes = await openaiClient.embeddings.create({
       model: 'text-embedding-3-small',
-      input: lastUserMessage,
+      input: lastUserText,
     })
     const embedding = embeddingRes.data[0].embedding
 
@@ -50,8 +55,8 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai('gpt-4o-mini'),
     system: systemWithContext,
-    messages,
+    messages: await convertToModelMessages(messages),
   })
 
-  return result.toTextStreamResponse()
+  return result.toUIMessageStreamResponse()
 }
