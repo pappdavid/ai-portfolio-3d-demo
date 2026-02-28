@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Database,
@@ -357,11 +358,14 @@ function ConnectorCard({
 }
 
 export default function DataSourcesButton() {
+  const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('list')
   const [connectors, setConnectors] = useState<Connector[]>([])
   const [loading, setLoading] = useState(false)
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set())
+
+  useEffect(() => { setMounted(true) }, [])
 
   const fetchConnectors = useCallback(async () => {
     try {
@@ -424,25 +428,26 @@ export default function DataSourcesButton() {
         Data Sources
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 bg-black/40 z-40"
-            />
+      {mounted && createPortal(
+        <AnimatePresence>
+          {open && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setOpen(false)}
+                className="fixed inset-0 bg-black/40 z-[9998]"
+              />
 
-            {/* Panel */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-slate-800 z-50 flex flex-col shadow-2xl"
+              {/* Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-slate-800 z-[9999] flex flex-col shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
@@ -504,10 +509,12 @@ export default function DataSourcesButton() {
                   </button>
                 </div>
               )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   )
 }
