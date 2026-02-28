@@ -1,4 +1,5 @@
 import ChatWrapper from '@/components/ChatWrapper'
+import DataSourcesButton from '@/components/DataSourcesButton'
 
 export default function Home() {
   return (
@@ -12,12 +13,15 @@ export default function Home() {
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">RAG · Thesys C1 · Three.js · pgvector</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs text-slate-400">Live</span>
+          <div className="flex items-center gap-3">
+            <DataSourcesButton />
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs text-slate-400">Live</span>
+            </div>
           </div>
         </div>
       </header>

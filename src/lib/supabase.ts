@@ -29,3 +29,18 @@ export async function matchDocuments(
 
   return (data as DocumentMatch[]) || []
 }
+
+// ── Connectors ────────────────────────────────────────────────────────────────
+
+export interface Connector {
+  id: number
+  name: string
+  source_type: 'github' | 'jira' | 'url' | 'manual'
+  config: Record<string, string>
+  is_active: boolean
+  sync_status: 'idle' | 'syncing' | 'error' | 'success'
+  sync_error: string | null
+  documents_count: number
+  last_synced_at: string | null
+  created_at: string
+}
